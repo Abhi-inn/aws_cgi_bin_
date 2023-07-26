@@ -1,0 +1,156 @@
+
+
+# Set up your AWS login credentials
+aws_access_key_id = 'AKIAVQKPBMJSVIIIFP6X'
+aws_secret_access_key = 'MdGImkDAfjmx/tOCtgl2DHVjLfh49BdTWnbx9idU'
+region_name = 'ap-south-1'
+
+# Create a session
+session = boto3.Session(
+    aws_access_key_id=aws_access_key_id,
+    aws_secret_access_key=aws_secret_access_key,
+    region_name=region_name
+)
+
+# Create an EC2 client
+ec2_client = session.client('ec2')
+
+# Create an IAM client
+iam_client = session.client('iam')
+
+# Create an S3 client
+s3_client = session.client('s3')
+
+# Create a Lambda client
+lambda_client = session.client('lambda')
+
+# Create API Gateway client
+api_gateway_client = session.client('apigateway')
+
+# Function to start an EC2 instance
+def start_ec2_instance(instance_id):
+    try:
+        ec2_client.start_instances(InstanceIds=[instance_id])
+        return f"Started instance with ID: {instance_id}"
+    except Exception as e:
+        return f"Failed to start instance with ID: {instance_id}. Error: {e}"
+
+# Function to stop an EC2 instance
+def stop_ec2_instance(instance_id):
+    try:
+        ec2_client.stop_instances(InstanceIds=[instance_id])
+        return f"Stopped instance with ID: {instance_id}"
+    except Exception as e:
+        return f"Failed to stop instance with ID: {instance_id}. Error: {e}"
+
+# Function to describe EC2 instances
+def describe_ec2_instances():
+    response = ec2_client.describe_instances()
+    instances_info = []
+    for reservation in response['Reservations']:
+        for instance in reservation['Instances']:
+            instance_id = instance['InstanceId']
+            state = instance['State']['Name']
+            name = ""
+            for tag in instance.get('Tags', []):
+                if tag['Key'] == 'Name':
+                    name = tag['Value']
+                    break
+            instance_info = {
+                'Instance ID': instance_id,
+                'State': state,
+                'Name': name
+            }
+            instances_info.append(instance_info)
+
+    return instances_info
+
+
+# Function to create a new IAM user
+def create_iam_user(username):
+    try:
+        response = iam_client.create_user(UserName=username)
+        return f"Created IAM user: {username}"
+    except Exception as e:
+        return f"Failed to create IAM user: {username}. Error: {e}"
+
+# Function to list existing IAM users
+def list_iam_users():
+    response = iam_client.list_users()
+    users_info = ""
+    for user in response['Users']:
+        username = user['UserName']
+        users_info += f"IAM User: {username}<br>"
+    return users_info
+
+# Function to create a new S3 bucket
+def create_s3_bucket(bucket_name):
+    try:
+        s3_client.create_bucket(Bucket=bucket_name)
+        return f"Created S3 bucket: {bucket_name}"
+    except Exception as e:
+        return f"Failed to create S3 bucket: {bucket_name}. Error: {e}"
+
+# Function to list existing S3 buckets
+def list_s3_buckets():
+    response = s3_client.list_buckets()
+    buckets_info = ""
+    for bucket in response['Buckets']:
+        bucket_name = bucket['Name']
+        buckets_info += f"S3 Bucket: {bucket_name}<br>"
+    return buckets_info
+
+# Function to create a new Lambda function
+def create_lambda_function(function_name, runtime='python3.10', handler='lambda_function.lambda_handler', role_arn='YOUR_DEFAULT_ROLE_ARN', code_path='YOUR_DEFAULT_CODE_PATH'):
+    # Use default values if not provided by the user
+    if role_arn == 'YOUR_DEFAULT_ROLE_ARN':
+        # Provide the ARN of the IAM role with Lambda execution permissions
+        role_arn = 'arn:aws:iam::378659758693:user/iamuser'
+    
+    if code_path == 'YOUR_DEFAULT_CODE_PATH':
+        # Provide the path to your Lambda function code ZIP file
+        code_path = '/path/to/your/lambda_function.zip'
+
+    with open(code_path, 'rb') as f:
+        code_content = f.read()
+    
+    try:
+        response = lambda_client.create_function(
+            FunctionName=function_name,
+            Runtime=runtime,
+            Role=role_arn,
+            Handler=handler,
+            Code={'ZipFile': code_content},
+        )
+        return f"Created Lambda function: {function_name}"
+    except Exception as e:
+        return f"Failed to create Lambda function: {function_name}. Error: {e}"
+
+# Function to list existing Lambda functions
+def list_lambda_functions():
+    response = lambda_client.list_functions()
+    functions_info = ""
+    for function in response['Functions']:
+        function_name = function['FunctionName']
+        functions_info += f"Lambda Function: {function_name}<br>"
+    return functions_info
+
+# Function to create a new API in API Gateway
+def create_api_gateway(api_name):
+    try:
+        response = api_gateway_client.create_rest_api(name=api_name)
+        api_id = response['id']
+        return f"Created API Gateway API: {api_name}, API ID: {api_id}"
+    except Exception as e:
+        return f"Failed to create API Gateway API: {api_name}. Error: {e}"
+
+# Function to list existing APIs in API Gateway
+def list_api_gateways():
+    response = api_gateway_client.get_rest_apis()
+    apis_info = ""
+    for api in response['items']:
+        api_name = api['name']
+        api_id = api['id']
+        apis_info += f"API Gateway API: {api_name}, API ID: {api_id}<br>"
+    return apis_info
+
